@@ -86,6 +86,14 @@ export interface Member {
     };
     /** List of emergency contacts for the member. Could include doctor contact details. */
     'emergencyContactList': EmergencyContact[];
+    /** Object ID of the last log entry for the member. This could be a check-in or check-out record. */
+    'lastLogEntry': string & tags.Format<'uuid'> | null;
+    /** List of check-in records for the member as identified by the check-in record's object ID. */
+    'checkInLogList': (CheckIn['id'])[];
+    /** List of check-out records for the member as identified by the check-out record's object ID. */
+    'checkOutLogList': (CheckOut['id'])[];
+    /** List of legal form signatures for the member as identified by the signature's object ID. */
+    'signatureList': (LegalFormSignature['id'])[];
 }
 
 /** Represents common properties for check-in and check-out records. */
@@ -103,7 +111,7 @@ interface CommonCheckInOut {
 }
 
 /** Represents a check-in audit log for a member. */
-interface CheckIn extends CommonCheckInOut {
+export interface CheckIn extends CommonCheckInOut {
     /** List of activities that the member is showing up for. */
     'activity': string[];
     /** Flag that indicates if the member is checking in. */
@@ -111,7 +119,9 @@ interface CheckIn extends CommonCheckInOut {
 }
 
 /** Represents a check-out audit log for a member. */
-interface CheckOut extends CommonCheckInOut {
+export interface CheckOut extends CommonCheckInOut {
+    /** Object ID of the corresponding check-in record that this record is checking out. */
+    'checkInId': string & tags.Format<'uuid'>;
     /** Flag that indicates if the member is checking out. */
     'type': 'check-out';
 }

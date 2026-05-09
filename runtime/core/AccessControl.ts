@@ -1,4 +1,6 @@
+import type { CheckIn, CheckOut, Member } from '../Utility/types/AccessControl.js';
 import { StorageEngine } from './Storage.js';
+import { assertGuardEquals } from 'typia';
 
 /** Engine responsible for managing access control operations, the main business logic for the app. */
 export class AccessControlEngine {
@@ -47,4 +49,120 @@ export class AccessControlEngine {
     public static clearInstance(): void { this.#instance = void 0; }
 
     // #endregion Initialization
+
+    // #region Business Logic
+
+    /**
+     * Checks a registered member into the facility when they have a legal form signature on file and are not already checked in.
+     * @param memberId Unique identifier of the member being checked in.
+     * @param reason List of activities the member is checking in for.
+     * @param actor Unique identifier of the principal initiating the check-in, defaults to the member being checked in.
+     * @returns Created check-in audit record.
+     */
+    async checkIn(memberId: Member['id'], reason: CheckIn['activity'], actor?: CheckIn['initiatingActor']): Promise<CheckIn> {
+        // #region Input Validation
+        assertGuardEquals(memberId);
+
+        assertGuardEquals(reason);
+
+        assertGuardEquals(actor);
+        // #endregion Input Validation
+
+        /** Registered member record loaded from persistent storage. */
+        let member: Member | undefined = void 0;
+
+        // Gracefully attempt to load the member so a missing member becomes a business-rule error instead of a raw storage error.
+        try { member = await this.#storageEngine.getMember(memberId); } catch (error) { throw new RangeError('The requested member does not exist!', { 'cause': 'Input validation!' }); }
+
+        /** Flag that indicates if a valid signature is found for the member. */
+        let validSignatureFound = false;
+
+        // Iterate through each signature until a valid, active signature is found.
+        for (const signatureId of member.signatureList) {
+            /** Current signature loaded from persistent storage. */
+            const signature = await this.#storageEngine.getSignature(signatureId);
+
+            /** Date that the signature is valid until. Which is one year after the signature timestamp. */
+            const validUntilDate = new Date(signature.timestamp);
+
+            // Add a year to the timestamp of the signature to finalize expiration date calculation.
+            validUntilDate.setFullYear(validUntilDate.getFullYear() + 1);
+
+            // Check if the signature is still valid
+            if (validUntilDate >= new Date()) {
+                // If a valid signature is found, set the flag and break the loop to avoid unnecessary iterations.
+                validSignatureFound = true;
+
+                // Stop iterating signatures as one has been found that is valid
+                break;
+            }
+        }
+
+        // Block the check-in if the member does not have a stored legal form signature.
+        if (!validSignatureFound) { throw new RangeError('No signature on file!', { 'cause': 'Input validation!' }); }
+
+        /** Last log entry for the member, which could be a check-in or check-out record. */
+        const lastLogEntry = member.lastLogEntry ? await this.#storageEngine.getCheckInOutLogs(member.lastLogEntry) : void 0;
+
+        // Block duplicate check-ins when the member already has a check-in record that has not yet been checked out.
+        if (lastLogEntry?.type === 'check-in') { throw new RangeError('The member cannot be checked in because they are already checked in.', { 'cause': 'Input operation!' }); }
+
+        /** Newly created check-in audit record in persistent storage. */
+        const checkInRecord = await this.#storageEngine.newCheckIn(memberId, reason, actor ?? memberId);
+
+        // Update the member's last log entry to the created check-in record for quick reference to the member's latest access control state.
+        member.lastLogEntry = checkInRecord.id;
+
+        // Add the created check-in record ID to the member record for direct member history access.
+        member.checkInLogList.push(checkInRecord.id);
+
+        // Persist the updated member record with the new check-in history link.
+        await this.#storageEngine.newMember(member);
+
+        // Return the created check-in audit record to the caller.
+        return checkInRecord;
+    }
+
+    /**
+     * Checks a registered member out of the facility when their latest access-control state is checked in.
+     * @param memberId Unique identifier of the member being checked out.
+     * @param actor Unique identifier of the principal initiating the check-out, defaults to the member being checked out.
+     * @returns Created check-out audit record.
+     */
+    async checkOut(memberId: Member['id'], actor?: CheckOut['initiatingActor']): Promise<CheckOut> {
+        // #region Input Validation
+        assertGuardEquals(memberId);
+
+        assertGuardEquals(actor);
+        // #endregion Input Validation
+
+        /** Registered member record loaded from persistent storage. */
+        let member: Member | undefined = void 0;
+
+        // Gracefully attempt to load the member so a missing member becomes a business-rule error instead of a raw storage error.
+        try { member = await this.#storageEngine.getMember(memberId); } catch (error) { throw new Error('The member cannot be checked out because they are not registered.', { 'cause': error }); }
+
+        /** Last log entry for the member, which could be a check-in or check-out record. */
+        const lastLogEntry = member.lastLogEntry ? await this.#storageEngine.getCheckInOutLogs(member.lastLogEntry) : void 0;
+
+        // Block duplicate check-ins when the member already has a check-in record that has not yet been checked out.
+        if (lastLogEntry?.type !== 'check-in') { throw new RangeError('The member cannot be checked out because they are not already checked in.', { 'cause': 'Input operation!' }); }
+
+        /** Created check-out audit record ID from persistent storage. */
+        const checkOutRecord = await this.#storageEngine.newCheckOut(memberId, lastLogEntry.id, actor ?? memberId);
+
+        // Update the member's last log entry to the created check-out record for quick reference to the member's latest access control state.
+        member.lastLogEntry = checkOutRecord.id;
+
+        // Add the created check-out record ID to the member record for direct member history access.
+        member.checkOutLogList.push(checkOutRecord.id);
+
+        // Persist the updated member record with the new check-out history link.
+        await this.#storageEngine.newMember(member);
+
+        // Return the created check-out audit record to the caller.
+        return checkOutRecord;
+    }
+
+    // #endregion Business Logic
 }

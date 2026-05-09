@@ -1,4 +1,4 @@
-import type { CheckInOut, LegalForm, LegalFormSignature, Member } from '../Utility/types/AccessControl.js';
+import type { CheckIn, CheckInOut, CheckOut, LegalForm, LegalFormSignature, Member } from '../Utility/types/AccessControl.js';
 import { assertGuardEquals, json } from 'typia';
 import { mkdir, readFile, readdir, unlink, writeFile } from 'node:fs/promises';
 import { SettingsEngine } from './Settings.js';
@@ -58,7 +58,7 @@ export class StorageEngine {
      * @param initiatingActor Unique identifier of the principal that initiated the check-in.
      * @returns Unique identifier of the created audit log entry.
      */
-    public async newCheckIn(memberId: CheckInOut['memberId'], activity: string[], initiatingActor: CheckInOut['initiatingActor']): Promise<CheckInOut['id']> {
+    public async newCheckIn(memberId: CheckInOut['memberId'], activity: string[], initiatingActor: CheckInOut['initiatingActor']): Promise<CheckIn> {
         // #region Input Validation
         assertGuardEquals(memberId);
 
@@ -89,25 +89,29 @@ export class StorageEngine {
         // Write the check-in log to disk.
         await writeFile(checkInLogPath, json.stringify(storedCheckInLog));
 
-        // Return the created audit log identifier to the caller.
-        return storedCheckInLog.id;
+        // Return the created audit log to the caller.
+        return storedCheckInLog;
     }
 
     /**
      * Creates a check-out audit log entry for a member.
      * @param memberId Unique identifier of the member being checked out.
+     * @param checkInId Unique identifier of the corresponding check-in record that this record is checking out.
      * @param initiatingActor Unique identifier of the principal that initiated the check-out.
      * @returns Unique identifier of the created audit log entry.
      */
-    public async newCheckOut(memberId: CheckInOut['memberId'], initiatingActor: CheckInOut['initiatingActor']): Promise<CheckInOut['id']> {
+    public async newCheckOut(memberId: CheckInOut['memberId'], checkInId: CheckIn['id'], initiatingActor: CheckInOut['initiatingActor']): Promise<CheckOut> {
         // #region Input Validation
         assertGuardEquals(memberId);
+
+        assertGuardEquals(checkInId);
 
         assertGuardEquals(initiatingActor);
         // #endregion Input Validation
 
         /** Captures the check-out audit log entry with a guaranteed unique identifier for persistent storage. */
         const storedCheckOutLog: CheckInOut = {
+            checkInId,
             'id': randomUUID(),
             initiatingActor,
             memberId,
@@ -127,8 +131,8 @@ export class StorageEngine {
         // Write the check-out log to disk.
         await writeFile(checkOutLogPath, json.stringify(storedCheckOutLog));
 
-        // Return the created audit log identifier to the caller.
-        return storedCheckOutLog.id;
+        // Return the created audit log to the caller.
+        return storedCheckOutLog;
     }
 
     /**

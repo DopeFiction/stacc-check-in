@@ -1,6 +1,8 @@
-import type { CheckIn, CheckInOut, CheckOut, LegalForm, LegalFormSignature, Member } from '../Utility/types/AccessControl.js';
+import type { CheckIn, CheckInOut, CheckOut, Member } from '../Utility/types/AccessControl.js';
+import type { LegalForm, LegalFormSignature, LegalFormVersion } from '../Utility/types/Legal.js';
 import { assertGuardEquals, json } from 'typia';
 import { mkdir, readFile, readdir, unlink, writeFile } from 'node:fs/promises';
+import type { FolderTypes } from '../Utility/types/Storage.js';
 import { SettingsEngine } from './Settings.js';
 import { join } from 'node:path';
 import { randomUUID } from 'node:crypto';
@@ -338,24 +340,265 @@ export class StorageEngine {
     }
 
     /**
+     * Creates a legal form family record or updates an existing one in persistent storage.
+     * @param form Legal form family metadata to persist.
+     * @returns The stored legal form family record.
+     */
+    public async newLegalForm(form: LegalForm): Promise<LegalForm> {
+        // #region Input Validation
+        assertGuardEquals(form);
+        // #endregion Input Validation
+
+        /** Path to the legal forms folder in persistent storage. */
+        const legalFormFolderPath = this.#calculateFolderPath('legalForm');
+
+        /** Path to the legal form family JSON file in persistent storage. */
+        const legalFormPath = join(legalFormFolderPath, `${ form.id }.json`);
+
+        // Create the legal forms folder if it doesn't exist so the legal form family record has a valid destination.
+        await mkdir(legalFormFolderPath, { 'recursive': true });
+
+        // Write the legal form family record to disk.
+        await writeFile(legalFormPath, json.stringify(form));
+
+        // Return the stored legal form family record to the caller.
+        return form;
+    }
+
+    /**
+     * Retrieves a specific legal form family from persistent storage by its unique ID.
+     * @param id Unique identifier of the legal form family to retrieve.
+     * @returns The requested legal form family.
+     */
+    public async getLegalForm(id: LegalForm['id']): Promise<LegalForm>;
+
+    /**
+     * Retrieves all legal form families from persistent storage.
+     * @returns List of all stored legal form families.
+     */
+    public async getLegalForm(): Promise<LegalForm[]>;
+
+    /**
+     * Retrieves one legal form family by ID or all legal form families when no ID is provided.
+     * @param id Optional unique identifier of the legal form family to retrieve.
+     * @param _filter Filter used to select a subset of legal form families based on specific criteria. Not currently implemented and should be left undefined.
+     * @returns The requested legal form family or the full list of legal form families.
+     */
+    public async getLegalForm(id?: LegalForm['id'], _filter?: never): Promise<LegalForm | LegalForm[]> {
+        // #region Input Validation
+        assertGuardEquals(id);
+
+        assertGuardEquals(_filter);
+        // #endregion Input Validation
+
+        // Pull all of the legal forms if in all mode.
+        if (!id) {
+            try {
+                /** Directory entries inside the legal form family storage folder. */
+                const legalFormFileMetaList = await readdir(this.#calculateFolderPath('legalForm'), { 'withFileTypes': true });
+
+                /** Computed list of valid legal form families loaded from the storage folder. */
+                const computedLegalFormList: LegalForm[] = [];
+
+                // Iterate through each detected file and load them if they are legal form family files.
+                for (const legalFormFileMeta of legalFormFileMetaList) {
+                    // Only operate on JSON files.
+                    if (legalFormFileMeta.isFile() && legalFormFileMeta.name.toLowerCase().endsWith('.json')) {
+                        /** Raw text data straight from the legal form family file to be validated (untrusted). */
+                        const rawLegalFormContent = await readFile(join(this.#calculateFolderPath('legalForm'), legalFormFileMeta.name), 'utf8');
+
+                        // Gracefully parse the legal form file and add it to the computed list if valid, otherwise skip it and continue loading the remaining files.
+                        try {
+                            /** Parsed legal form family object from the raw JSON content. */
+                            const parsedLegalForm = json.assertParse<LegalForm>(rawLegalFormContent);
+
+                            // Add the legal form family to the computed list.
+                            computedLegalFormList.push(parsedLegalForm);
+                        } catch (_error) {
+                            // Skip the file if it fails validation.
+                        }
+                    }
+                }
+
+                // Return the list of legal form families to the caller.
+                return computedLegalFormList;
+            } catch (error) {
+                // If the directory is missing, return an empty list to indicate that there are no legal forms instead of throwing an error.
+                if ((error as NodeJS.ErrnoException).code === 'ENOENT') { return []; }
+
+                // Otherwise throw the error up a level as it is unexpected and not something that can be handled gracefully here.
+                throw error;
+            }
+        }
+
+        /** Raw text data straight from the legal form family file to be validated (untrusted). */
+        const rawLegalFormContent = await readFile(join(this.#calculateFolderPath('legalForm'), `${ id }.json`), 'utf8');
+
+        /** Parsed legal form family object from the raw JSON content. */
+        const parsedLegalForm = json.assertParse<LegalForm>(rawLegalFormContent);
+
+        // Return the parsed legal form family to the caller.
+        return parsedLegalForm;
+    }
+
+    /**
+     * Deletes a legal form family from persistent storage by its unique ID.
+     * @param id Unique identifier of the legal form family to delete.
+     */
+    public async removeLegalForm(id: LegalForm['id']): Promise<void> {
+        // #region Input Validation
+        assertGuardEquals(id);
+        // #endregion Input Validation
+
+        /** Path to the legal form family JSON file in persistent storage. */
+        const legalFormPath = join(this.#calculateFolderPath('legalForm'), `${ id }.json`);
+
+        // Attempt graceful deletion of the legal form family.
+        try {
+            // Delete the requested legal form family.
+            await unlink(legalFormPath);
+        } catch (_error) {
+            // Do nothing if the delete fails or if the file is not present.
+        }
+    }
+
+    /**
+     * Creates a legal form version record or updates (upsert) an existing one in persistent storage.
+     * @param formVersion Legal form version data to persist.
+     * @returns The stored legal form version record.
+     */
+    public async newLegalFormVersion(formVersion: LegalFormVersion): Promise<LegalFormVersion> {
+        // #region Input Validation
+        assertGuardEquals(formVersion);
+        // #endregion Input Validation
+
+        /** Path to the legal form versions folder in persistent storage. */
+        const legalFormVersionFolderPath = this.#calculateFolderPath('legalFormVersion');
+
+        /** Path to the legal form version JSON file in persistent storage. */
+        const legalFormVersionPath = join(legalFormVersionFolderPath, `${ formVersion.id }.json`);
+
+        // Create the legal form versions folder if it doesn't exist so the legal form version record has a valid destination.
+        await mkdir(legalFormVersionFolderPath, { 'recursive': true });
+
+        // Write the legal form version record to disk.
+        await writeFile(legalFormVersionPath, json.stringify(formVersion));
+
+        // Return the stored legal form version record to the caller.
+        return formVersion;
+    }
+
+    /**
+     * Retrieves a specific legal form version from persistent storage by its unique ID.
+     * @param id Unique identifier of the legal form version to retrieve.
+     * @returns The requested legal form version.
+     */
+    public async getLegalFormVersion(id: LegalFormVersion['id']): Promise<LegalFormVersion>;
+
+    /**
+     * Retrieves all legal form versions from persistent storage.
+     * @returns List of all stored legal form versions.
+     */
+    public async getLegalFormVersion(): Promise<LegalFormVersion[]>;
+
+    /**
+     * Retrieves one legal form version by ID or all legal form versions when no ID is provided.
+     * @param id Optional unique identifier of the legal form version to retrieve.
+     * @param _filter Filter used to select a subset of legal form versions based on specific criteria. Not currently implemented and should be left undefined.
+     * @returns The requested legal form version or the full list of legal form versions.
+     */
+    public async getLegalFormVersion(id?: LegalFormVersion['id'], _filter?: never): Promise<LegalFormVersion | LegalFormVersion[]> {
+        // #region Input Validation
+        assertGuardEquals(id);
+
+        assertGuardEquals(_filter);
+        // #endregion Input Validation
+
+        // Pull all of the legal form versions if in all mode.
+        if (!id) {
+            try {
+                /** Directory entries inside the legal form version storage folder. */
+                const legalFormVersionFileMetaList = await readdir(this.#calculateFolderPath('legalFormVersion'), { 'withFileTypes': true });
+
+                /** Computed list of valid legal form versions loaded from the storage folder. */
+                const computedLegalFormVersionList: LegalFormVersion[] = [];
+
+                // Iterate through each detected file and load them if they are legal form version files.
+                for (const legalFormVersionFileMeta of legalFormVersionFileMetaList) {
+                    // Only operate on JSON files.
+                    if (legalFormVersionFileMeta.isFile() && legalFormVersionFileMeta.name.toLowerCase().endsWith('.json')) {
+                        /** Raw text data straight from the legal form version file to be validated (untrusted). */
+                        const rawLegalFormVersionContent = await readFile(join(this.#calculateFolderPath('legalFormVersion'), legalFormVersionFileMeta.name), 'utf8');
+
+                        // Gracefully parse the legal form version file and add it to the computed list if valid, otherwise skip it and continue loading the remaining files.
+                        try {
+                            /** Parsed legal form version object from the raw JSON content. */
+                            const parsedLegalFormVersion = json.assertParse<LegalFormVersion>(rawLegalFormVersionContent);
+
+                            // Add the legal form version to the computed list.
+                            computedLegalFormVersionList.push(parsedLegalFormVersion);
+                        } catch (_error) {
+                            // Skip the file if it fails validation.
+                        }
+                    }
+                }
+
+                // Return the list of legal form versions to the caller.
+                return computedLegalFormVersionList;
+            } catch (error) {
+                // If the directory is missing, return an empty list to indicate that there are no legal form versions instead of throwing an error.
+                if ((error as NodeJS.ErrnoException).code === 'ENOENT') { return []; }
+
+                // Otherwise throw the error up a level as it is unexpected and not something that can be handled gracefully here.
+                throw error;
+            }
+        }
+
+        /** Raw text data straight from the legal form version file to be validated (untrusted). */
+        const rawLegalFormVersionContent = await readFile(join(this.#calculateFolderPath('legalFormVersion'), `${ id }.json`), 'utf8');
+
+        /** Parsed legal form version object from the raw JSON content. */
+        const parsedLegalFormVersion = json.assertParse<LegalFormVersion>(rawLegalFormVersionContent);
+
+        // Return the parsed legal form version to the caller.
+        return parsedLegalFormVersion;
+    }
+
+    /**
+     * Deletes a legal form version from persistent storage by its unique ID.
+     * @param id Unique identifier of the legal form version to delete.
+     */
+    public async removeLegalFormVersion(id: LegalFormVersion['id']): Promise<void> {
+        // #region Input Validation
+        assertGuardEquals(id);
+        // #endregion Input Validation
+
+        /** Path to the legal form version JSON file in persistent storage. */
+        const legalFormVersionPath = join(this.#calculateFolderPath('legalFormVersion'), `${ id }.json`);
+
+        // Attempt graceful deletion of the legal form version.
+        try {
+            // Delete the requested legal form version.
+            await unlink(legalFormVersionPath);
+        } catch (_error) {
+            // Do nothing if the delete fails or if the file is not present.
+        }
+    }
+
+    /**
      * Creates a legal form signature record for a member.
-     * @param memberId Unique identifier of the member signing the legal form.
-     * @param formId Unique identifier of the legal form being signed.
+     * @param signature Legal form signature data to persist.
      * @returns The stored legal form signature record.
      */
-    public async newSignature(memberId: Member['id'], formId: LegalForm['id']): Promise<LegalFormSignature> {
+    public async newSignature(signature: Omit<LegalFormSignature, 'id' | 'timestamp'>): Promise<LegalFormSignature> {
         // #region Input Validation
-        assertGuardEquals(memberId);
-
-        assertGuardEquals(formId);
+        assertGuardEquals(signature);
         // #endregion Input Validation
 
         /** Captures the legal form signature with a guaranteed unique identifier for persistent storage. */
         const storedSignature: LegalFormSignature = {
-            formId,
-            'formVersion': 1,
             'id': randomUUID(),
-            memberId,
+            ...signature,
             'timestamp': new Date().toISOString()
         };
 
@@ -375,6 +618,82 @@ export class StorageEngine {
         return storedSignature;
     }
 
+    /**
+     * Retrieves a specific legal form signature from persistent storage by its unique ID.
+     * @param id Unique identifier of the legal form signature to retrieve.
+     * @returns The requested legal form signature.
+     */
+    public async getSignature(id: LegalFormSignature['id']): Promise<LegalFormSignature>;
+
+    /**
+     * Retrieves all legal form signatures from persistent storage.
+     * @returns List of all stored legal form signatures.
+     */
+    public async getSignature(): Promise<LegalFormSignature[]>;
+
+    /**
+     * Retrieves one legal form signature by ID or all legal form signatures when no ID is provided.
+     * @param id Optional unique identifier of the legal form signature to retrieve.
+     * @param _filter Filter used to select a subset of legal form signatures based on specific criteria. Not currently implemented and should be left undefined.
+     * @returns The requested legal form signature or the full list of legal form signatures.
+     */
+    public async getSignature(id?: LegalFormSignature['id'], _filter?: never): Promise<LegalFormSignature | LegalFormSignature[]> {
+        // #region Input Validation
+        assertGuardEquals(id);
+
+        assertGuardEquals(_filter);
+        // #endregion Input Validation
+
+        // Pull all of the legal form signatures if in all mode
+        if (!id) {
+            try {
+                /** Directory entries inside the legal form signature storage folder. */
+                const signatureFileMetaList = await readdir(this.#calculateFolderPath('signature'), { 'withFileTypes': true });
+
+                /** Computed list of valid legal form signatures loaded from the storage folder. */
+                const computedSignatureList: LegalFormSignature[] = [];
+
+                // Iterate through each detected file and load them if they are legal form signature files
+                for (const signatureFileMeta of signatureFileMetaList) {
+                    // Only operate on JSON files
+                    if (signatureFileMeta.isFile() && signatureFileMeta.name.toLowerCase().endsWith('.json')) {
+                        /** Raw text data straight from the legal form signature file to be validated (untrusted). */
+                        const rawSignatureContent = await readFile(join(this.#calculateFolderPath('signature'), signatureFileMeta.name), 'utf8');
+
+                        // Gracefully parse the legal form signature file and add it to the computed signature list if valid, otherwise skip it and move on to the next file without halting the entire load process if a single file is invalid.
+                        try {
+                            /** Parsed legal form signature object from the raw JSON content. */
+                            const signature = json.assertParse<LegalFormSignature>(rawSignatureContent);
+
+                            // Add the legal form signature to the computed signature list
+                            computedSignatureList.push(signature);
+                        } catch (_error) {
+                            // Skip the the file if it fails validation
+                        }
+                    }
+                }
+
+                // Return the list of legal form signatures to the caller after iterating through all of the files in the signature storage folder and loading the valid ones, which may be an empty list if no valid signature files were found.
+                return computedSignatureList;
+            } catch (error) {
+                // If the directory is missing, return an empty list to indicate that there are no legal form signatures instead of throwing an error, as the missing directory is effectively the same state as an empty legal form signature list.
+                if ((error as NodeJS.ErrnoException).code === 'ENOENT') { return []; }
+
+                // Otherwise throw the error up a level as it is unexpected and not something that can be handled gracefully here.
+                throw error;
+            }
+        }
+
+        /** Raw text data straight from the signature file to be validated (untrusted). */
+        const rawSignatureContent = await readFile(join(this.#calculateFolderPath('signature'), `${ id }.json`), 'utf8');
+
+        /** Parsed legal form signature object from the raw JSON content. */
+        const parsedSignature = json.assertParse<LegalFormSignature>(rawSignatureContent);
+
+        // Return the parsed legal form signature to the caller
+        return parsedSignature;
+    }
+
     // #endregion Business Logic
 
     /*
@@ -387,7 +706,7 @@ export class StorageEngine {
      * @param folderType Flag that indicates which path to calculate based on the current settings.
      * @returns Full path to the requested folder type.
      */
-    #calculateFolderPath(folderType: 'checkInOutLog' | 'member' | 'signature'): string {
+    #calculateFolderPath(folderType: FolderTypes): string {
         // #region Input Validation
         assertGuardEquals(folderType);
         // #endregion Input Validation
@@ -421,7 +740,19 @@ export class StorageEngine {
 
                 // Stop execution to prevent fallthrough
                 break;
-            case 'signature': {
+            case 'legalForm':
+                // Store legal form family records in a dedicated subfolder to keep them separate from individual version records.
+                computedFolderPath = join(computedFolderPath, 'legalForms');
+
+                // Stop execution to prevent fallthrough
+                break;
+            case 'legalFormVersion':
+                // Store immutable legal form versions in a dedicated subfolder so versions can be managed independently of the form family metadata.
+                computedFolderPath = join(computedFolderPath, 'legalFormVersions');
+
+                // Stop execution to prevent fallthrough
+                break;
+            case 'signature':
                 // Check if a custom signature folder path is provided in the settings, and if not, use the default 'signatures' subfolder within the app data path to store the signature records.
                 if (!this.#settingsEngine.currentSettings.signatureFolderPath) {
                     // Default to using a sub folder within the app's data directory by default
@@ -433,7 +764,6 @@ export class StorageEngine {
 
                 // Stop execution to prevent fallthrough
                 break;
-            }
             default:
                 // This should never be reached due to the input validation, but is necessary to satisfy the exhaustiveness requirement of the switch statement.
                 break;

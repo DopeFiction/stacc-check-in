@@ -28,6 +28,7 @@ export class SettingsEngine {
             'checkInLogFolderPath': void 0,
             'clientId': NULL_UUID,
             'memberFolderPath': void 0,
+            'requiredFormList': [],
             'signatureFolderPath': void 0,
             'tenantId': 'common',
             'version': 1

@@ -1,4 +1,5 @@
 import type { CheckIn, CheckOut, Member } from '../Utility/types/AccessControl.js';
+import { SettingsEngine } from './Settings.js';
 import { StorageEngine } from './Storage.js';
 import { assertGuardEquals } from 'typia';
 
@@ -8,6 +9,8 @@ export class AccessControlEngine {
     static #instance: AccessControlEngine | undefined = void 0;
     /** Instance of the StorageEngine used by the AccessControlEngine. */
     #storageEngine: StorageEngine;
+    /** Instance of the settings engine used to retrieve the current system settings. */
+    #settingsEngine: SettingsEngine;
 
     // #region Initialization
 
@@ -22,6 +25,9 @@ export class AccessControlEngine {
 
         // Store a copy of the storage engine for later use
         this.#storageEngine = storageEngine;
+
+        // Store a copy of the settings engine for later use
+        this.#settingsEngine = SettingsEngine.getInstance();
     }
 
     /**
@@ -74,38 +80,46 @@ export class AccessControlEngine {
         // Gracefully attempt to load the member so a missing member becomes a business-rule error instead of a raw storage error.
         try { member = await this.#storageEngine.getMember(memberId); } catch (error) { throw new RangeError('The requested member does not exist!', { 'cause': 'Input validation!' }); }
 
-        /** Flag that indicates if a valid signature is found for the member. */
-        let validSignatureFound = false;
-
-        // Iterate through each signature until a valid, active signature is found.
-        for (const signatureId of member.signatureList) {
-            /** Current signature loaded from persistent storage. */
-            const signature = await this.#storageEngine.getSignature(signatureId);
-
-            /** Date that the signature is valid until. Which is one year after the signature timestamp. */
-            const validUntilDate = new Date(signature.timestamp);
-
-            // Add a year to the timestamp of the signature to finalize expiration date calculation.
-            validUntilDate.setFullYear(validUntilDate.getFullYear() + 1);
-
-            // Check if the signature is still valid
-            if (validUntilDate >= new Date()) {
-                // If a valid signature is found, set the flag and break the loop to avoid unnecessary iterations.
-                validSignatureFound = true;
-
-                // Stop iterating signatures as one has been found that is valid
-                break;
-            }
-        }
-
-        // Block the check-in if the member does not have a stored legal form signature.
-        if (!validSignatureFound) { throw new RangeError('No signature on file!', { 'cause': 'Input validation!' }); }
-
         /** Last log entry for the member, which could be a check-in or check-out record. */
         const lastLogEntry = member.lastLogEntry ? await this.#storageEngine.getCheckInOutLogs(member.lastLogEntry) : void 0;
 
         // Block duplicate check-ins when the member already has a check-in record that has not yet been checked out.
         if (lastLogEntry?.type === 'check-in') { throw new RangeError('The member cannot be checked in because they are already checked in.', { 'cause': 'Input operation!' }); }
+
+        /** Working list of forms that need to be signed by the member to complete the check-in process. */
+        const requiredSignatureList = [...this.#settingsEngine.currentSettings.requiredFormList];
+
+        // Iterate through each signature until signature validation is complete.
+        for (const signatureId of member.signatureList) {
+            /** Current signature loaded from persistent storage. */
+            const signature = await this.#storageEngine.getSignature(signatureId);
+
+            /** Instance of the form that was signed by the member. */
+            const formVersion = await this.#storageEngine.getLegalFormVersion(signature.formVersionId);
+
+            /** Snapshot of the current date, to be used for comparison for expiration and not before values. */
+            const currentDate = new Date();
+
+            // Skip the current signature if the form version it is associated with is not yet active
+            // eslint-disable-next-line no-continue
+            if (formVersion.notBefore && currentDate < new Date(formVersion.notBefore)) { continue; }
+
+            // Skip the current signature if the form version it is associated with is expired
+            // eslint-disable-next-line no-continue
+            if (formVersion.expiration && currentDate > new Date(formVersion.expiration)) { continue; }
+
+            /** Index location of the form in the required signature list, if present. */
+            const indexLocation = requiredSignatureList.indexOf(formVersion.formId);
+
+            // Remove the signature from the required signature list if it is valid and present
+            if (indexLocation !== -1) { requiredSignatureList.splice(indexLocation, 1); }
+
+            // Stop execution of the loop early since signature validation is successful
+            if (requiredSignatureList.length === 0) { break; }
+        }
+
+        // Block the check-in if the member does not have a stored legal form signature.
+        if (requiredSignatureList.length !== 0) { throw new RangeError('No signature on file!', { 'cause': 'Input validation!' }); }
 
         /** Newly created check-in audit record in persistent storage. */
         const checkInRecord = await this.#storageEngine.newCheckIn(memberId, reason, actor ?? memberId);

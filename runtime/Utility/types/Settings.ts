@@ -11,6 +11,13 @@ export interface CurrentSettings {
      */
     'checkInLogFolderPath': string | undefined;
     /**
+     * List of required forms for end users to have signed/complete during the check in process.
+     * No required forms by default, but can be configured to require legal forms such as liability waivers, and NDAs.
+     * @default []
+     * Nothing required by default.
+     */
+    'requiredFormList': (string & tags.Format<'uuid'>)[];
+    /**
      * Path to the folder where legal form signatures are stored.
      * Stores the signatures in the same folder the settings file is stored if left undefined.
      * @default undefined

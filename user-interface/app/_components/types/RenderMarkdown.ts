@@ -2,12 +2,8 @@
 
 /** Options passed to the markdown-it parser factory. */
 export interface MarkdownItOptions {
-    /** Converts newline characters into hard line breaks. */
-    'breaks': boolean;
     /** Disables raw HTML parsing in markdown content. */
     'html': boolean;
-    /** Converts plain URLs into link tokens. */
-    'linkify': boolean;
     /** Disables typographic quote and dash substitutions. */
     'typographer': boolean;
 }
@@ -19,7 +15,13 @@ export interface MarkdownItInstance {
 }
 
 /** Callable factory shape used to construct a markdown-it instance. */
-export type MarkdownItInstanceFactory = (options: MarkdownItOptions) => MarkdownItInstance;
+export type MarkdownItPreset = 'commonmark' | 'default' | 'zero';
+
+/** Callable factory shape used to construct a markdown-it instance. */
+export type MarkdownItInstanceFactory = {
+    (presetName: MarkdownItPreset, options: MarkdownItOptions): MarkdownItInstance;
+    (options: MarkdownItOptions): MarkdownItInstance;
+};
 
 /** Single parsed markdown token emitted by markdown-it. */
 export interface MarkdownToken {

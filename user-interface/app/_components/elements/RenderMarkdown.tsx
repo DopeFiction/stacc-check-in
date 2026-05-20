@@ -1,6 +1,6 @@
 'use client';
 
-import { Body1, Body1Strong, Caption1, Divider, Link, Subtitle1, Subtitle2, Text, Title1, Title2, Title3 } from '@fluentui/react-components';
+import { Body1, Body1Strong, Caption1, Divider, Link, Subtitle1, Subtitle2, Title1, Title2, Title3 } from '@fluentui/react-components';
 import { Layout, LayoutItem } from './LayoutSystem';
 import markdownItFactory from 'markdown-it';
 import { Fragment, useMemo } from 'react';
@@ -15,13 +15,9 @@ interface RenderMarkdownProps {
 
 /** Shared markdown-it instance configured for safe token parsing. */
 // Create one shared parser instance for all renderer invocations.
-const markdownIt = (markdownItFactory as unknown as MarkdownItInstanceFactory)({
-    // Convert source newlines into markdown line breaks.
-    'breaks': true,
+const markdownIt = (markdownItFactory as unknown as MarkdownItInstanceFactory)('commonmark', {
     // Disable raw HTML parsing so markdown content stays safe.
     'html': false,
-    // Auto-detect bare links in text content.
-    'linkify': true,
     // Disable typographic substitutions so the source text stays predictable.
     'typographer': false
 });
@@ -178,8 +174,11 @@ export function RenderMarkdown(props: RenderMarkdownProps): React.ReactNode {
                         continue;
                     }
                     case 'hardbreak':
-                    case 'softbreak':
                         nodes.push(<br key={ key } />);
+                        index += 1;
+                        continue;
+                    case 'softbreak':
+                        nodes.push('\n');
                         index += 1;
                         continue;
                     case 'html_inline':
@@ -335,7 +334,7 @@ export function RenderMarkdown(props: RenderMarkdownProps): React.ReactNode {
                     }
                     case 'code_block':
                     case 'fence':
-                        nodes.push(<pre className={ styleList.codeBlock } key={ key }><Text>{ token.content }</Text></pre>);
+                        nodes.push(<pre className={ styleList.codeBlock } key={ key }><code>{ token.content }</code></pre>);
                         index += 1;
                         continue;
                     case 'heading_open': {

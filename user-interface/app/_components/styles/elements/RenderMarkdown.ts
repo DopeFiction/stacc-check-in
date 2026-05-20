@@ -19,7 +19,7 @@ export const useStyleList = makeStyles({
         'overflowX': 'auto',
         'paddingBlock': tokens.spacingVerticalM,
         'paddingInline': tokens.spacingHorizontalM,
-        'whiteSpace': 'pre-wrap'
+        'whiteSpace': 'pre'
     },
     'inlineCode': {
         'backgroundColor': tokens.colorNeutralBackground2,

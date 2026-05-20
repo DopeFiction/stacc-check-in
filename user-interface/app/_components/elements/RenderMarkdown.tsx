@@ -5,6 +5,7 @@ import { Layout, LayoutItem } from './LayoutSystem';
 import markdownItFactory from 'markdown-it';
 import { Fragment, useMemo } from 'react';
 import type { MarkdownItInstanceFactory } from '../types/RenderMarkdown';
+ import { useStyleList } from '../styles/elements/RenderMarkdown';
 
 /** Props accepted by the RenderMarkdown component. */
 interface RenderMarkdownProps {

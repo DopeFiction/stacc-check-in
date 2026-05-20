@@ -1,5 +1,7 @@
 /** Access control engine type imported from the runtime source declarations. */
 type AccessControlEngine = import('../runtime/core/AccessControl.js').AccessControlEngine;
+/** Member engine type imported from the runtime source declarations. */
+type MemberEngine = import('../runtime/core/Member.js').MemberEngine;
 /** Legal engine type imported from the runtime source declarations. */
 type LegalEngine = import('../runtime/core/Legal.js').LegalEngine;
 
@@ -13,6 +15,15 @@ interface Window {
             'checkIn': AccessControlEngine['checkIn'];
             /** Checks a member out of the facility. */
             'checkOut': AccessControlEngine['checkOut'];
+        };
+        /** IPC facade for the member engine. */
+        'MemberEngine': {
+            /** Creates a new member record or updates (upsert) an existing member record. */
+            'newMember': MemberEngine['newMember'];
+            /** Retrieves one member record by ID or multiple member records by filter criteria. */
+            'getMember': MemberEngine['getMember'];
+            /** Deletes a member record by ID. */
+            'removeMember': MemberEngine['removeMember'];
         };
         /** IPC facade for the legal engine. */
         'LegalEngine': {

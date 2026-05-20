@@ -1,6 +1,6 @@
 import type { LegalFormDraft, LegalForm as LegalFormFamily, LegalFormSignature, LegalFormSignatureDraft, LegalFormVersion, LegalFormVersionDraft } from '../Utility/types/Legal.js';
 import type { LanguageCodes } from '../Utility/types/i18n.js';
-import type { Member } from '../Utility/types/AccessControl.js';
+import type { Member } from '../Utility/types/Member.js';
 import { StorageEngine } from './Storage.js';
 import { assertGuardEquals } from 'typia';
 import { randomUUID } from 'node:crypto';
@@ -16,7 +16,7 @@ export class LegalEngine {
 
     /**
      * Initializes the properties and state of the StorageEngine.
-     * @param storageEngine Instance of the StorageEngine to use for the AccessControlEngine's operations, required for dependency injection.
+     * @param storageEngine Instance of the StorageEngine to use for the LegalEngine's operations, required for dependency injection.
      */
     private constructor(storageEngine: StorageEngine) {
         // #region Input Validation

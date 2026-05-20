@@ -1,4 +1,5 @@
-import type { CheckIn, CheckOut, Member } from '../Utility/types/AccessControl.js';
+import type { CheckIn, CheckOut } from '../Utility/types/AccessControl.js';
+import type { Member } from '../Utility/types/Member.js';
 import { SettingsEngine } from './Settings.js';
 import { StorageEngine } from './Storage.js';
 import { assertGuardEquals } from 'typia';

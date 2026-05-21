@@ -28,14 +28,13 @@ export const useStyleList = makeStyles({
         'paddingInline': tokens.spacingHorizontalSNudge
     },
     'list': {
-        'display': 'grid',
+        'display': 'block',
         'margin': 0,
-        'paddingLeft': tokens.spacingHorizontalXXL,
-        'rowGap': tokens.spacingVerticalXS
+        'paddingLeft': tokens.spacingHorizontalXXL
     },
     'listItem': {
-        'display': 'grid',
-        'rowGap': tokens.spacingVerticalXS
+        'display': 'list-item',
+        'marginBottom': tokens.spacingVerticalXS
     },
     'root': {
         'width': '100%'

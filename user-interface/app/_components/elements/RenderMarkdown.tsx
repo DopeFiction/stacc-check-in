@@ -4,7 +4,7 @@ import { Body1, Body1Strong, Caption1, Divider, Link, Subtitle1, Subtitle2, Titl
 import { Layout, LayoutItem } from './LayoutSystem';
 import markdownItFactory from 'markdown-it';
 import { Fragment, useMemo } from 'react';
-import type { MarkdownItInstanceFactory } from '../types/RenderMarkdown';
+import type { MarkdownItInstanceFactory, MarkdownToken } from '../types/RenderMarkdown';
  import { useStyleList } from '../styles/elements/RenderMarkdown';
 
 /** Props accepted by the RenderMarkdown component. */

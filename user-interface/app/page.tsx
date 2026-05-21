@@ -3,6 +3,8 @@
 import { BarcodeScannerRegular, PeopleSettingsRegular } from '@fluentui/react-icons';
 import { Card, CardHeader, CardPreview, Subtitle1, Text, Title1, tokens } from '@fluentui/react-components';
 import { Layout, LayoutItem } from './_components/elements/LayoutSystem';
+import { RenderMarkdown } from './_components/elements/RenderMarkdown';
+import { markdownTester } from './_components/utilities/markdowntester';
 import { useRouter } from 'next/navigation';
 import { useStyleList } from './_components/styles/pages/Home';
 
@@ -45,6 +47,17 @@ export default function Page(): React.ReactNode {
                         description={ <Text>Add, remove or sync users.</Text> }
                     />
                     <CardPreview>
+                    </CardPreview>
+                </Card>
+            </LayoutItem>
+            <LayoutItem align="center">
+                <Card className={ computedStyles.markdownTestCard }>
+                    <CardHeader
+                        header={ <Subtitle1>CommonMark Markdown Renderer Test</Subtitle1> }
+                        description={ <Text>Use this card to verify standard markdown behavior in the renderer.</Text> }
+                    />
+                    <CardPreview>
+                        <RenderMarkdown content={ markdownTester } />
                     </CardPreview>
                 </Card>
             </LayoutItem>

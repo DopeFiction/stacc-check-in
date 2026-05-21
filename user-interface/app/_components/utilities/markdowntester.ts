@@ -277,7 +277,7 @@ export const markdownTester: string = [
     '',
     'This is [an example](http://example.com/) inline link.',
     '',
-    '[This link](http://example.net/) has no title attribute.',
+    '[This link](http://example.com/) has no title attribute.',
     '',
     '### Emphasis',
     '',

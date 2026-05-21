@@ -50,6 +50,12 @@ export function NavigationMenu(): React.ReactNode {
 
                 // Stop execution to prevent fallthrough
                 break;
+            case 'markdown-test':
+                // Execute page navigation
+                router.push('/MarkdownTest');
+
+                // Stop execution to prevent fallthrough
+                break;
             default:
                 // No default navigation page, just close the menu
 
@@ -69,6 +75,9 @@ export function NavigationMenu(): React.ReactNode {
             case '/About':
             case '/About/':
                 return 'about';
+            case '/MarkdownTest':
+            case '/MarkdownTest/':
+                return 'markdown-test';
             default:
                 return '';
         }
@@ -99,6 +108,7 @@ export function NavigationMenu(): React.ReactNode {
                 <NavSectionHeader>System</NavSectionHeader>
                 <NavItem icon={ <Settings20Regular /> } value="settings" className={ compiledStyles.colorFix }>Settings</NavItem>
                 <NavItem icon={ <Info20Regular /> } value="about" className={ compiledStyles.colorFix }>About</NavItem>
+                <NavItem icon={ <Info20Regular /> } value="markdown-test" className={ compiledStyles.colorFix }>Markdown Test</NavItem>
             </NavDrawerBody>
         </NavDrawer>
     );

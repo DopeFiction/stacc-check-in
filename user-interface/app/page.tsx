@@ -3,8 +3,6 @@
 import { BarcodeScannerRegular, PeopleSettingsRegular } from '@fluentui/react-icons';
 import { Card, CardHeader, CardPreview, Subtitle1, Text, Title1, tokens } from '@fluentui/react-components';
 import { Layout, LayoutItem } from './_components/elements/LayoutSystem';
-import { RenderMarkdown } from './_components/elements/RenderMarkdown';
-import { markdownTester } from './_components/utilities/markdowntester';
 import { useRouter } from 'next/navigation';
 import { useStyleList } from './_components/styles/pages/Home';
 
@@ -24,6 +22,9 @@ export default function Page(): React.ReactNode {
 
     /** Navigates to the member management page while keeping state in memory. */
     function memberManagerLandingNavigation(): void { router.push('/MemberManagement'); }
+
+    /** Navigates to the markdown test page while keeping state in memory. */
+    function markdownTestNavigation(): void { router.push('/MarkdownTest'); }
 
     // Render the home page
     return (
@@ -49,15 +50,12 @@ export default function Page(): React.ReactNode {
                     <CardPreview>
                     </CardPreview>
                 </Card>
-            </LayoutItem>
-            <LayoutItem align="center">
-                <Card className={ computedStyles.markdownTestCard }>
+                <Card className={ computedStyles.card } onClick={ markdownTestNavigation }>
                     <CardHeader
-                        header={ <Subtitle1>CommonMark Markdown Renderer Test</Subtitle1> }
-                        description={ <Text>Use this card to verify standard markdown behavior in the renderer.</Text> }
+                        header={ <Subtitle1>Markdown Renderer Test</Subtitle1> }
+                        description={ <Text>Open the dedicated page for markdown rendering tests.</Text> }
                     />
                     <CardPreview>
-                        <RenderMarkdown content={ markdownTester } />
                     </CardPreview>
                 </Card>
             </LayoutItem>

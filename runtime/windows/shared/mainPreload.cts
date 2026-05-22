@@ -1,5 +1,6 @@
-import type { CheckIn, CheckOut, Member } from '../../Utility/types/AccessControl.js';
+import type { CheckIn, CheckOut } from '../../Utility/types/AccessControl.js';
 import type { LegalForm, LegalFormDraft, LegalFormSignature, LegalFormSignatureDraft, LegalFormVersion, LegalFormVersionDraft } from '../../Utility/types/Legal.js';
+import type { Member } from '../../Utility/types/Member.js';
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 import electronApi = require('electron');
 
@@ -7,6 +8,11 @@ electronApi.contextBridge.exposeInMainWorld('electronApi', {
 	'AccessControlEngine': {
 		'checkIn': async (memberId: Member['id'], reason: CheckIn['activity'], actor?: CheckIn['initiatingActor']) => await electronApi.ipcRenderer.invoke('AccessControlEngine.checkIn', memberId, reason, actor),
 		'checkOut': async (memberId: Member['id'], actor?: CheckOut['initiatingActor']) => await electronApi.ipcRenderer.invoke('AccessControlEngine.checkOut', memberId, actor)
+	},
+	'MemberEngine': {
+		'newMember': async (memberDraft: Member | Omit<Member, 'id'>) => await electronApi.ipcRenderer.invoke('MemberEngine.newMember', memberDraft),
+		'getMember': async (id?: Member['id'], filter?: Partial<Member>) => await electronApi.ipcRenderer.invoke('MemberEngine.getMember', id, filter),
+		'removeMember': async (id: Member['id']) => await electronApi.ipcRenderer.invoke('MemberEngine.removeMember', id)
 	},
 	'LegalEngine': {
 		'newForm': async (formDraft: LegalFormDraft, formId?: LegalForm['id']) => await electronApi.ipcRenderer.invoke('LegalEngine.newForm', formDraft, formId),

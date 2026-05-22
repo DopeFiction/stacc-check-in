@@ -1,8 +1,9 @@
-import type { CheckIn, CheckInOut, CheckOut, Member } from '../Utility/types/AccessControl.js';
+import type { CheckIn, CheckInOut, CheckOut } from '../Utility/types/AccessControl.js';
 import type { LegalForm, LegalFormSignature, LegalFormVersion } from '../Utility/types/Legal.js';
 import { assertGuardEquals, json } from 'typia';
 import { mkdir, readFile, readdir, unlink, writeFile } from 'node:fs/promises';
 import type { FolderTypes } from '../Utility/types/Storage.js';
+import type { Member } from '../Utility/types/Member.js';
 import { SettingsEngine } from './Settings.js';
 import { join } from 'node:path';
 import { randomUUID } from 'node:crypto';
@@ -251,21 +252,22 @@ export class StorageEngine {
 
     /**
      * Retrieves all members from persistent storage.
+     * @param filter Filter used to select a subset of members based on specific criteria.
      * @returns List of all stored members.
      */
-    public async getMember(id: never, _filter?: never): Promise<Member[]>;
+    public async getMember(id: never, filter?: Partial<Member>): Promise<Member[]>;
 
     /**
      * Retrieves one member by ID or all members when no ID is provided.
      * @param id Optional unique identifier of the member to retrieve.
-     * @param _filter Filter used to select a subset of members based on specific criteria. Not currently implemented and should be left undefined.
+     * @param filter Filter used to select a subset of members based on specific criteria.
      * @returns The requested member or the full member list.
      */
-    public async getMember(id?: Member['id'], _filter?: never): Promise<Member | Member[]> {
+    public async getMember(id?: Member['id'], filter?: Partial<Member>): Promise<Member | Member[]> {
         // #region Input Validation
         assertGuardEquals(id);
 
-        assertGuardEquals(_filter);
+        assertGuardEquals(filter);
         // #endregion Input Validation
 
         // Pull all of the members if in all mode
@@ -289,8 +291,15 @@ export class StorageEngine {
                             /** Parsed member object from the raw JSON content. */
                             const member = json.assertParse<Member>(rawMemberContent);
 
+                            // Skip members that do not match the requested filter fields.
+                            /** Captures whether the current member matches every provided filter field. */
+                            const isFilterMatch = !filter ||
+                                (Object.entries(filter) as [keyof Member, Partial<Member>[keyof Member]][])
+                                    .every(([filterKey, filterValue]) => typeof filterValue === 'undefined' ||
+                                        json.stringify(member[filterKey]) === json.stringify(filterValue));
+
                             // Add the member to the computed member list
-                            computedMemberList.push(member);
+                            if (isFilterMatch) { computedMemberList.push(member); }
                         } catch (_error) {
                             // Skip the the file if it fails validation
                         }

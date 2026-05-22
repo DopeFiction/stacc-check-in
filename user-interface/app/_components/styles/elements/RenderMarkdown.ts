@@ -12,14 +12,30 @@ export const useStyleList = makeStyles({
         'paddingLeft': tokens.spacingHorizontalM,
         'width': '100%'
     },
-    'codeBlock': {
+    'blockquoteCard': {
         'backgroundColor': tokens.colorNeutralBackground2,
-        'borderRadius': tokens.borderRadiusMedium,
+        'width': '100%'
+    },
+    'codeBlock': {
         'margin': 0,
         'overflowX': 'auto',
         'paddingBlock': tokens.spacingVerticalM,
         'paddingInline': tokens.spacingHorizontalM,
         'whiteSpace': 'pre'
+    },
+    'codeBlockCard': {
+        'backgroundColor': tokens.colorNeutralBackground2,
+        'width': '100%'
+    },
+    'image': {
+        'display': 'block',
+        'height': 'auto',
+        'maxWidth': '100%',
+        'width': '100%'
+    },
+    'imageCard': {
+        'gap': tokens.spacingVerticalS,
+        'width': '100%'
     },
     'inlineCode': {
         'backgroundColor': tokens.colorNeutralBackground2,

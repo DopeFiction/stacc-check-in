@@ -23,9 +23,6 @@ export default function Page(): React.ReactNode {
     /** Navigates to the member management page while keeping state in memory. */
     function memberManagerLandingNavigation(): void { router.push('/MemberManagement'); }
 
-    /** Navigates to the markdown test page while keeping state in memory. */
-    function markdownTestNavigation(): void { router.push('/MarkdownTest'); }
-
     // Render the home page
     return (
         <Layout align="center" justify="center">
@@ -46,14 +43,6 @@ export default function Page(): React.ReactNode {
                     <CardHeader
                         header={ <Subtitle1>Manage Member List</Subtitle1> }
                         description={ <Text>Add, remove or sync users.</Text> }
-                    />
-                    <CardPreview>
-                    </CardPreview>
-                </Card>
-                <Card className={ computedStyles.card } onClick={ markdownTestNavigation }>
-                    <CardHeader
-                        header={ <Subtitle1>Markdown Renderer Test</Subtitle1> }
-                        description={ <Text>Open the dedicated page for markdown rendering tests.</Text> }
                     />
                     <CardPreview>
                     </CardPreview>

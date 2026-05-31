@@ -8,12 +8,5 @@ export const useStyleList = makeStyles({
         'backgroundColor': tokens.colorNeutralBackground2,
         'marginLeft': tokens.spacingHorizontalM,
         'width': '250px'
-    },
-    'markdownTestCard': {
-        'backgroundColor': tokens.colorNeutralBackground2,
-        'marginTop': tokens.spacingVerticalXL,
-        'maxWidth': '760px',
-        'padding': tokens.spacingHorizontalM,
-        'width': '100%'
     }
 });

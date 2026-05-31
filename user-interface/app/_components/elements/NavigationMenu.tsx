@@ -50,12 +50,6 @@ export function NavigationMenu(): React.ReactNode {
 
                 // Stop execution to prevent fallthrough
                 break;
-            case 'markdown-test':
-                // Execute page navigation
-                router.push('/MarkdownTest');
-
-                // Stop execution to prevent fallthrough
-                break;
             default:
                 // No default navigation page, just close the menu
 

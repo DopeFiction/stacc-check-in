@@ -1,6 +1,6 @@
 'use client';
 
-import { Body1, Body1Strong, Caption1, Card, CardPreview, Divider, Image, Link, Subtitle1, Subtitle2, Title1, Title2, Title3 } from '@fluentui/react-components';
+import { Body1, Body1Strong, Caption1, Card, CardPreview, Divider, Image, Link, ListItem, Subtitle1, Subtitle2, Title1, Title2, Title3 } from '@fluentui/react-components';
 import { Layout, LayoutItem } from './LayoutSystem';
 import markdownItFactory from 'markdown-it';
 import { Fragment, useMemo } from 'react';
@@ -158,7 +158,7 @@ export function RenderMarkdown(props: RenderMarkdownProps): React.ReactNode {
          * @param closingTokenType Optional closing token that terminates the range.
          * @returns The rendered nodes and the next unread token index.
          */
-        function renderInlineRange(tokensToRender: MarkdownToken[] | null, keyPrefix: string, startIndex: number, closingTokenType: string | null = null): { 'nextIndex': number; 'nodes': React.ReactNode[] } {
+        function renderInlineRange(tokensToRender: MarkdownToken[] | null, keyPrefix: string, startIndex: number, closingTokenType: string | null = null): { 'nextIndex': number; 'nodes': React.ReactNode[]; } {
             // Return an empty result when no inline tokens exist.
             if (tokensToRender === null) {
                 return {
@@ -182,7 +182,7 @@ export function RenderMarkdown(props: RenderMarkdownProps): React.ReactNode {
                 if (closingTokenType !== null && token.type === closingTokenType) {
                     return {
                         'nextIndex': index,
-                        'nodes': nodes
+                        nodes
                     };
                 }
 
@@ -314,7 +314,7 @@ export function RenderMarkdown(props: RenderMarkdownProps): React.ReactNode {
          * @param closingTokenType Optional closing token that terminates the range.
          * @returns The rendered nodes and the next unread token index.
          */
-        function renderBlockRange(tokensToRender: MarkdownToken[], keyPrefix: string, startIndex: number, closingTokenType: string | null = null): { 'nextIndex': number; 'nodes': React.ReactNode[] } {
+        function renderBlockRange(tokensToRender: MarkdownToken[], keyPrefix: string, startIndex: number, closingTokenType: string | null = null): { 'nextIndex': number; 'nodes': React.ReactNode[]; } {
             /** Rendered nodes accumulated for this block token range. */
             const nodes: React.ReactNode[] = [];
 
@@ -324,16 +324,17 @@ export function RenderMarkdown(props: RenderMarkdownProps): React.ReactNode {
             /**
              * Renders list body tokens into list item nodes.
              * @param listTokens Tokens contained within the current list block.
+             * @param startIndex Starting token index for the list body range, immediately after the list opening token.
              * @param listKeyPrefix Prefix used to build stable list item keys.
              * @param listClosingTokenType Token type that marks the end of the list body.
              * @returns The rendered list items and the next unread token index.
              */
-            function renderListItems(listTokens: MarkdownToken[], listKeyPrefix: string, listClosingTokenType: string): { 'nextIndex': number; 'nodes': React.ReactNode[] } {
+            function renderListItems(listTokens: MarkdownToken[], startIndex: number, listKeyPrefix: string, listClosingTokenType: string): { 'nextIndex': number; 'nodes': React.ReactNode[]; } {
                 /** Rendered list item nodes accumulated for the current list body. */
                 const listNodes: React.ReactNode[] = [];
 
                 /** Current traversal position within the list token range. */
-                let listIndex = 0;
+                let listIndex = startIndex;
 
                 /** Zero-based index of the current list item being rendered. */
                 let itemIndex = 0;
@@ -356,7 +357,15 @@ export function RenderMarkdown(props: RenderMarkdownProps): React.ReactNode {
                         /** Rendered block nodes contained within the current list item. */
                         const renderedContent = renderBlockRange(listTokens, `${ listKeyPrefix }-item-${ itemIndex }`, listIndex + 1, 'list_item_close');
 
-                        listNodes.push(<li className={ styleList.listItem } key={ `${ listKeyPrefix }-${ itemIndex }` }>{ renderedContent.nodes }</li>);
+                        listNodes.push(<ListItem
+                            className={ styleList.listItem }
+                            key={ `${ listKeyPrefix }-${ itemIndex }` }
+                            style={ {
+                                'display': 'list-item',
+                                'listStyleType': 'inherit'
+                            } }>
+                            { renderedContent.nodes }
+                        </ListItem>);
 
                         itemIndex += 1;
 
@@ -415,11 +424,11 @@ export function RenderMarkdown(props: RenderMarkdownProps): React.ReactNode {
                     }
                     case 'bullet_list_open': {
                         /** Rendered list items contained within the current unordered list. */
-                        const renderedContent = renderListItems(tokensToRender.slice(index + 1), `${ key }-bullet-list`, 'bullet_list_close');
+                        const renderedContent = renderListItems(tokensToRender, index + 1, `${ key }-bullet-list`, 'bullet_list_close');
 
                         nodes.push(<ul className={ styleList.list } key={ key }>{ renderedContent.nodes }</ul>);
 
-                        nextIndex = index + renderedContent.nextIndex + 2;
+                        nextIndex = renderedContent.nextIndex + 1;
 
                         break;
                     }
@@ -466,7 +475,7 @@ export function RenderMarkdown(props: RenderMarkdownProps): React.ReactNode {
                         const parsedStartValue = startValue === null ? Number.NaN : Number.parseInt(startValue, 10);
 
                         /** Rendered list items contained within the current ordered list. */
-                        const renderedContent = renderListItems(tokensToRender.slice(index + 1), `${ key }-ordered-list`, 'ordered_list_close');
+                        const renderedContent = renderListItems(tokensToRender, index + 1, `${ key }-ordered-list`, 'ordered_list_close');
 
                         nodes.push(
                             Number.isNaN(parsedStartValue)
@@ -474,7 +483,7 @@ export function RenderMarkdown(props: RenderMarkdownProps): React.ReactNode {
                                 : <ol className={ styleList.list } key={ key } start={ parsedStartValue }>{ renderedContent.nodes }</ol>
                         );
 
-                        nextIndex = index + renderedContent.nextIndex + 2;
+                        nextIndex = renderedContent.nextIndex + 1;
 
                         break;
                     }
